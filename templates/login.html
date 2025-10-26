@@ -83,75 +83,90 @@
     <div class="flash-camera" id="flash"></div>
 
     <!-- Scripts -->
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const formLogin = document.getElementById("formLogin");
-        const inputText = document.getElementById("inputText");
-        const password = document.getElementById("password");
-        const errorInputText = document.getElementById("fidelErrorInputText");
-        const errorPassword = document.getElementById("fidelErrorPassword");
-        const video = document.getElementById("video");
-        const canvas = document.getElementById("canvas");
-        const btnDarEntrada = document.getElementById("btnDarEntrada");
+   <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const formLogin = document.getElementById("formLogin");
+  const inputText = document.getElementById("inputText");
+  const password = document.getElementById("password");
+  const errorInputText = document.getElementById("fidelErrorInputText");
+  const errorPassword = document.getElementById("fidelErrorPassword");
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const btnDarEntrada = document.getElementById("btnDarEntrada");
 
-        // Validação e envio do formulário
-        formLogin.addEventListener("submit", (e) => {
-          e.preventDefault();
+  // Validação e envio do formulário
+  formLogin.addEventListener("submit", (e) => {
+    e.preventDefault();
 
-          let erros = {};
-          const valorUsuario = inputText.value.trim();
-          const valorSenha = password.value.trim();
+    let erros = {};
+    const valorUsuario = inputText.value.trim();
+    const valorSenha = password.value.trim();
 
-          const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-          const regexName = /^[a-zA-Z\s]+$/;
+    const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const regexName = /^[a-zA-Z\s]+$/;
 
-          if (!valorUsuario) {
-            erros.usuario = "Campo obrigatório";
-          } else if (!regexEmail.test(valorUsuario) && !regexName.test(valorUsuario)) {
-            erros.usuario = "Digite um nome ou e-mail válido";
-          }
+    if (!valorUsuario) {
+      erros.usuario = "Campo obrigatório";
+    } else if (!regexEmail.test(valorUsuario) && !regexName.test(valorUsuario)) {
+      erros.usuario = "Digite um nome ou e-mail válido";
+    }
 
-          if (!valorSenha) {
-            erros.senha = "Campo obrigatório";
-          }
+    if (!valorSenha) {
+      erros.senha = "Campo obrigatório";
+    }
 
-          errorInputText.textContent = erros.usuario || "";
-          errorPassword.textContent = erros.senha || "";
+    errorInputText.textContent = erros.usuario || "";
+    errorPassword.textContent = erros.senha || "";
 
-          if (Object.keys(erros).length === 0) {
-            formLogin.submit();
-          }
-        });
+    if (Object.keys(erros).length === 0) {
+      formLogin.submit();
+    }
+  });
 
-        // Captura de rosto para dar entrada
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then(stream => { video.srcObject = stream; })
-          .catch(err => { alert("Erro ao acessar a câmera: " + err); });
+  // Captura de rosto para dar entrada - inicia câmera somente no clique
+  btnDarEntrada.addEventListener("click", async () => {
+    const usuario = inputText.value.trim();
+    if (!usuario) {
+      alert("Digite seu usuário antes de dar entrada.");
+      return;
+    }
 
-        btnDarEntrada.addEventListener("click", () => {
-          const usuario = inputText.value.trim();
-          if (!usuario) {
-            alert("Digite seu usuário antes de dar entrada.");
-            return;
-          }
+    try {
+      // Inicializa a câmera
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      video.style.display = "block";
 
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(video, 0, 0);
+      // Espera um pouco para garantir que o vídeo carregou
+      setTimeout(() => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
 
-          const dataURL = canvas.toDataURL("image/jpeg");
+        // Para a câmera imediatamente após capturar
+        stream.getTracks().forEach(track => track.stop());
+        video.style.display = "none";
 
-          fetch("/reconhecimento_facial", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imagem: dataURL, acao: 'entrada' })
-          })
-          .then(res => res.json())
-          .then(data => alert(data.mensagem))
-          .catch(err => alert("Erro ao verificar rosto: " + err));
-        });
-      });
+        const dataURL = canvas.toDataURL("image/jpeg");
+
+        // Envia para o Flask
+        fetch("/reconhecimento_facial", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imagem: dataURL, acao: 'entrada' })
+        })
+        .then(res => res.json())
+        .then(data => alert(data.mensagem))
+        .catch(err => alert("Erro ao verificar rosto: " + err));
+      }, 500); // ajustável, tempo para a câmera iniciar
+    } catch (err) {
+      alert("Erro ao acessar a câmera: " + err);
+    }
+  });
+});
+
+
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

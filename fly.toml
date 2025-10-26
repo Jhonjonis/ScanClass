@@ -1,22 +1,10 @@
 app = "projetoiot-main"
 
-kill_signal = "SIGINT"
-kill_timeout = 5
-processes = []
+[env]
+PORT = "8080"
 
 [build]
-  # Se não tiver Dockerfile, Fly detecta Flask automaticamente
-  builder = "paketobuildpacks/builder:base"
-
-[env]
-  PORT = "8080"  # Flask usa 8080 no Fly
-
-[deploy]
-  release_command = "flask db upgrade || true"
-
-[experimental]
-  allowed_public_ports = [8080]
-  auto_rollback = true
+builder = "paketobuildpacks/builder:base"
 
 [services]
   [[services.http]]
@@ -30,12 +18,3 @@ processes = []
     [[services.http.ports]]
       handlers = ["tls", "http"]
       port = 443
-
-    [[services.tcp_checks]]
-      interval = 10000
-      timeout = 2000
-      grace_period = 10000
-      restart_limit = 0
-
-[region]
-  code = "gru"
