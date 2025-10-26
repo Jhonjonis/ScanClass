@@ -1,22 +1,26 @@
-document.getElementById("formLogin").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const inputText = document.getElementById("inputText").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const fidelErrorInputText = document.getElementById("fidelErrorInputText")
-  const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  const regexName = /^[a-zA-Z\s]+$/;
-  const erros = {};
-  if (!inputText) erros.inputText = "Campo obrigatório";
+document.addEventListener("DOMContentLoaded", () => {
+  const formLogin = document.getElementById("formLogin");
+  const inputText = document.getElementById("inputText");
+  const password = document.getElementById("password");
+  const errorInputText = document.getElementById("fidelErrorInputText");
+  const errorPassword = document.getElementById("fidelErrorPassword");
 
-  if (regexEmail.test(inputText)) {
-    console.log("email valido");
-  } else if (regexName.test(inputText)) {
-    console.log("naome valido");
-  } else {
-    erros.inputText = "Digite um nome ou email válido";
-  }
-  fidelErrorInputText.textContent = erros.inputText || "";
-  if (erros.length > 0) {
-    console.error("Erros:", erros.join(", "));
-  }
+  formLogin.addEventListener("submit", (e) => {
+    e.preventDefault(); // previne envio padrão temporariamente
+
+    let erros = {};
+    const valorUsuario = inputText.value.trim();
+    const valorSenha = password.value.trim();
+
+    if (!valorUsuario) erros.usuario = "Campo obrigatório";
+    if (!valorSenha) erros.senha = "Campo obrigatório";
+
+    errorInputText.textContent = erros.usuario || "";
+    errorPassword.textContent = erros.senha || "";
+
+    // se não houver erros, envia o form tradicional
+    if (Object.keys(erros).length === 0) {
+      formLogin.submit(); // **envia POST para Flask**
+    }
+  });
 });
