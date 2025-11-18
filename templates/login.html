@@ -70,7 +70,8 @@
 
         <!-- Login por reconhecimento facial -->
         <h2 class="text-center">Dar entrada no sistema</h2>
-        <video id="video" autoplay class="w-100 mb-2" style="border:1px solid #ccc; border-radius:8px;"></video>
+        <video id="video" class="w-100 mb-2" style="border:1px solid #ccc; border-radius:8px; display:none;"></video>
+        <div id="statusEntrada" class="alert alert-info text-center" style="display:none;"></div>
         <button class="btn btn-success w-100 mb-3" id="btnDarEntrada">Dar entrada</button>
         <canvas id="canvas" style="display:none;"></canvas>
       </div>
@@ -83,90 +84,164 @@
     <div class="flash-camera" id="flash"></div>
 
     <!-- Scripts -->
-   <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const formLogin = document.getElementById("formLogin");
-  const inputText = document.getElementById("inputText");
-  const password = document.getElementById("password");
-  const errorInputText = document.getElementById("fidelErrorInputText");
-  const errorPassword = document.getElementById("fidelErrorPassword");
-  const video = document.getElementById("video");
-  const canvas = document.getElementById("canvas");
-  const btnDarEntrada = document.getElementById("btnDarEntrada");
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const formLogin = document.getElementById("formLogin");
+        const inputText = document.getElementById("inputText");
+        const password = document.getElementById("password");
+        const errorInputText = document.getElementById("fidelErrorInputText");
+        const errorPassword = document.getElementById("fidelErrorPassword");
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const btnDarEntrada = document.getElementById("btnDarEntrada");
+        const statusEntrada = document.getElementById("statusEntrada");
 
-  // Validação e envio do formulário
-  formLogin.addEventListener("submit", (e) => {
-    e.preventDefault();
+        let stream = null;
 
-    let erros = {};
-    const valorUsuario = inputText.value.trim();
-    const valorSenha = password.value.trim();
+        // Validação e envio do formulário tradicional
+        formLogin.addEventListener("submit", (e) => {
+          e.preventDefault();
 
-    const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    const regexName = /^[a-zA-Z\s]+$/;
+          let erros = {};
+          const valorUsuario = inputText.value.trim();
+          const valorSenha = password.value.trim();
 
-    if (!valorUsuario) {
-      erros.usuario = "Campo obrigatório";
-    } else if (!regexEmail.test(valorUsuario) && !regexName.test(valorUsuario)) {
-      erros.usuario = "Digite um nome ou e-mail válido";
-    }
+          // Regex mais flexíveis
+          const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          const regexUsuario = /^[a-zA-Z0-9._-]{3,}$/; // Permite letras, números, . _ -
 
-    if (!valorSenha) {
-      erros.senha = "Campo obrigatório";
-    }
+          if (!valorUsuario) {
+            erros.usuario = "Campo obrigatório";
+          } else if (!regexEmail.test(valorUsuario) && !regexUsuario.test(valorUsuario)) {
+            erros.usuario = "Digite um e-mail válido ou nome de usuário (mín. 3 caracteres, apenas letras, números, . _ -)";
+          }
 
-    errorInputText.textContent = erros.usuario || "";
-    errorPassword.textContent = erros.senha || "";
+          if (!valorSenha) {
+            erros.senha = "Campo obrigatório";
+          } else if (valorSenha.length < 1) {
+            erros.senha = "Senha deve ter pelo menos 1 caractere";
+          }
 
-    if (Object.keys(erros).length === 0) {
-      formLogin.submit();
-    }
-  });
+          errorInputText.textContent = erros.usuario || "";
+          errorPassword.textContent = erros.senha || "";
 
-  // Captura de rosto para dar entrada - inicia câmera somente no clique
-  btnDarEntrada.addEventListener("click", async () => {
-    const usuario = inputText.value.trim();
-    if (!usuario) {
-      alert("Digite seu usuário antes de dar entrada.");
-      return;
-    }
+          if (Object.keys(erros).length === 0) {
+            formLogin.submit();
+          }
+        });
 
-    try {
-      // Inicializa a câmera
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      video.srcObject = stream;
-      video.style.display = "block";
+        // Função para parar a câmera
+        function stopCamera() {
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+          }
+          video.style.display = "none";
+          video.srcObject = null;
+        }
 
-      // Espera um pouco para garantir que o vídeo carregou
-      setTimeout(() => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0);
+        // Captura de rosto para dar entrada
+        btnDarEntrada.addEventListener("click", async () => {
+          const usuario = inputText.value.trim();
+          
+          if (!usuario) {
+            alert("Digite seu usuário ou e-mail antes de dar entrada.");
+            return;
+          }
 
-        // Para a câmera imediatamente após capturar
-        stream.getTracks().forEach(track => track.stop());
-        video.style.display = "none";
+          // Validar formato do usuário
+          const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          const regexUsuario = /^[a-zA-Z0-9._-]{3,}$/;
+          
+          if (!regexEmail.test(usuario) && !regexUsuario.test(usuario)) {
+            alert("Digite um e-mail válido ou nome de usuário (mín. 3 caracteres)");
+            return;
+          }
 
-        const dataURL = canvas.toDataURL("image/jpeg");
+          btnDarEntrada.disabled = true;
+          statusEntrada.textContent = "Iniciando câmera...";
+          statusEntrada.className = "alert alert-info text-center";
+          statusEntrada.style.display = "block";
 
-        // Envia para o Flask
-        fetch("/reconhecimento_facial", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imagem: dataURL, acao: 'entrada' })
-        })
-        .then(res => res.json())
-        .then(data => alert(data.mensagem))
-        .catch(err => alert("Erro ao verificar rosto: " + err));
-      }, 500); // ajustável, tempo para a câmera iniciar
-    } catch (err) {
-      alert("Erro ao acessar a câmera: " + err);
-    }
-  });
-});
+          try {
+            // Inicializa a câmera se não estiver ativa
+            if (!stream) {
+              stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                  width: { ideal: 640 },
+                  height: { ideal: 480 },
+                  facingMode: 'user' 
+                } 
+              });
+              video.srcObject = stream;
+              video.style.display = "block";
+              
+              // Esperar o vídeo carregar
+              await new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                  video.play().then(resolve);
+                };
+              });
+            }
 
+            statusEntrada.textContent = "Capturando imagem...";
+            
+            // Dar tempo para a câmera estabilizar
+            await new Promise(resolve => setTimeout(resolve, 500));
 
+            // Capturar imagem
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0);
+
+            const dataURL = canvas.toDataURL("image/jpeg");
+
+            statusEntrada.textContent = "Verificando rosto...";
+
+            // Envia para o Flask
+            const response = await fetch("/reconhecimento_facial", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                imagem: dataURL, 
+                acao: 'entrada',
+                usuario: usuario // Envia o usuário para verificação adicional
+              })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              statusEntrada.textContent = data.mensagem || "Entrada registrada com sucesso!";
+              statusEntrada.className = "alert alert-success text-center";
+              
+              // Limpar após sucesso
+              setTimeout(() => {
+                stopCamera();
+                statusEntrada.style.display = "none";
+              }, 3000);
+            } else {
+              statusEntrada.textContent = data.erro || "Erro ao registrar entrada";
+              statusEntrada.className = "alert alert-danger text-center";
+            }
+
+          } catch (err) {
+            console.error("Erro:", err);
+            statusEntrada.textContent = "Erro ao acessar a câmera: " + err.message;
+            statusEntrada.className = "alert alert-danger text-center";
+          } finally {
+            btnDarEntrada.disabled = false;
+            
+            // Manter a câmera aberta para tentativas subsequentes
+            // Se quiser fechar a câmera automaticamente, descomente:
+            // stopCamera();
+          }
+        });
+
+        // Parar câmera quando sair da página
+        window.addEventListener('beforeunload', stopCamera);
+      });
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

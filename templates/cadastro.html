@@ -28,15 +28,35 @@
 
         <h2 class="text-center">Capture seu rosto para concluir o cadastro</h2>
 
-        <div class="mb-2">
-          <input id="name" class="form-control mb-2" type="text" placeholder="Nome completo" />
-          <input id="nameUser" class="form-control mb-2" type="text" placeholder="Nome de usuário" />
-          <input id="email" class="form-control mb-2" type="email" placeholder="E-mail" />
-          <input id="password" class="form-control mb-2" type="password" placeholder="Senha" />
-        </div>
+        <form id="form_register">
+          <div class="mb-2">
+            <input id="name" class="form-control mb-2" type="text" placeholder="Nome completo" />
+            <div id="fidelErrorName" class="text-danger small mb-2"></div>
+
+            <input id="nameUser" class="form-control mb-2" type="text" placeholder="Nome de usuário" />
+            <div id="fidelErrorNameUser" class="text-danger small mb-2"></div>
+
+            <input id="email" class="form-control mb-2" type="email" placeholder="E-mail" />
+            <div id="fidelErrorEmail" class="text-danger small mb-2"></div>
+
+            <input id="password" class="form-control mb-2" type="password" placeholder="Senha" />
+            <div id="fidelErrorPassword" class="text-danger small mb-2"></div>
+
+            <input id="passwordConfirm" class="form-control mb-2" type="password" placeholder="Confirmar Senha" />
+            <div id="fidelErrorPasswordConfirm" class="text-danger small mb-2"></div>
+
+            <input id="curso" class="form-control mb-2" type="text" placeholder="Curso" />
+            <div id="fidelErrorCurso" class="text-danger small mb-2"></div>
+
+            <input id="matricula" class="form-control mb-2" type="text" placeholder="Matrícula" />
+            <div id="fidelErrorMatricula" class="text-danger small mb-2"></div>
+          </div>
+        </form>
 
         <video id="video" class="w-100 mb-2" style="border:1px solid #ccc; border-radius:8px; display:none;" playsinline></video>
-        <button type="button" class="btn btn-success w-100 mb-3" id="btnCapturarRosto">Capturar rosto</button>
+        <div id="statusRosto" class="alert alert-info text-center" style="display:none;"></div>
+        <button type="button" class="btn btn-success w-100 mb-3" id="btnIniciarCamera">Iniciar Câmera</button>
+        <button type="button" class="btn btn-primary w-100 mb-3" id="btnCapturarRosto" style="display:none;">Capturar Rosto</button>
         <canvas id="canvas" style="display:none;"></canvas>
 
         <div class="signup-box mt-3 text-center">
@@ -46,12 +66,86 @@
     </div>
 
     <script>
+      // Validação do formulário
+      document.getElementById("form_register").addEventListener("submit", (e) => {
+        e.preventDefault();
+        validarFormulario();
+      });
+
+      function validarFormulario() {
+        const name = document.getElementById("name").value.trim();
+        const nameUser = document.getElementById("nameUser").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        const passwordConfirm = document.getElementById("passwordConfirm").value;
+        const curso = document.getElementById("curso").value.trim();
+        const matricula = document.getElementById("matricula").value.trim();
+
+        const fidelErrorName = document.getElementById("fidelErrorName");
+        const fidelErrorNameUser = document.getElementById("fidelErrorNameUser");
+        const fidelErrorEmail = document.getElementById("fidelErrorEmail");
+        const fidelErrorPassword = document.getElementById("fidelErrorPassword");
+        const fidelErrorPasswordConfirm = document.getElementById("fidelErrorPasswordConfirm");
+        const fidelErrorCurso = document.getElementById("fidelErrorCurso");
+        const fidelErrorMatricula = document.getElementById("fidelErrorMatricula");
+
+        const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        const regexPassword = /^.{8,}$/;
+        const regexCurso = /^[A-Za-zÀ-ÿ\s]+$/; // Apenas letras e espaços
+        const regexMatricula = /^\d+$/; // Apenas números
+
+        const erros = {};
+
+        // Validações
+        if (!name) erros.name = "Nome obrigatório";
+        if (!nameUser) erros.nameUser = "Nome de usuário obrigatório";
+        
+        if (!email) erros.email = "E-mail obrigatório";
+        else if (!regexEmail.test(email)) erros.email = "Formato de e-mail inválido";
+
+        if (!password) erros.password = "Senha obrigatória";
+        else if (!regexPassword.test(password))
+          erros.password = "Senha deve ter no mínimo 8 caracteres";
+
+        if (!passwordConfirm)
+          erros.passwordConfirm = "Confirmação de senha obrigatória";
+        else if (password && passwordConfirm && password !== passwordConfirm)
+          erros.passwordConfirm = "As senhas devem ser iguais";
+
+        if (!curso) erros.curso = "Curso obrigatório";
+        else if (!regexCurso.test(curso)) erros.curso = "Curso deve conter apenas letras";
+
+        if (!matricula) erros.matricula = "Matrícula obrigatória";
+        else if (!regexMatricula.test(matricula)) erros.matricula = "Matrícula deve conter apenas números";
+
+        // Exibir erros
+        fidelErrorName.textContent = erros.name || "";
+        fidelErrorNameUser.textContent = erros.nameUser || "";
+        fidelErrorEmail.textContent = erros.email || "";
+        fidelErrorPassword.textContent = erros.password || "";
+        fidelErrorPasswordConfirm.textContent = erros.passwordConfirm || "";
+        fidelErrorCurso.textContent = erros.curso || "";
+        fidelErrorMatricula.textContent = erros.matricula || "";
+
+        if (Object.keys(erros).length > 0) {
+          console.error("Erros:", erros);
+          return false;
+        }
+
+        console.log("Formulário válido!");
+        return true;
+      }
+
+      // Código da câmera e detecção facial
       (function(){
         const video = document.getElementById('video');
-        const btn = document.getElementById('btnCapturarRosto');
+        const btnIniciarCamera = document.getElementById('btnIniciarCamera');
+        const btnCapturarRosto = document.getElementById('btnCapturarRosto');
+        const statusRosto = document.getElementById('statusRosto');
         const canvas = document.getElementById('canvas');
         let stream = null;
-        let capturing = false;
+        let rostoDetectado = false;
+        let intervaloDetecao = null;
 
         async function stopStream() {
           if (stream) {
@@ -62,34 +156,120 @@
             video.srcObject = null;
             video.style.display = 'none';
           }
+          if (intervaloDetecao) {
+            clearInterval(intervaloDetecao);
+            intervaloDetecao = null;
+          }
+          rostoDetectado = false;
+          btnCapturarRosto.style.display = 'none';
+          btnIniciarCamera.style.display = 'block';
+          statusRosto.style.display = 'none';
         }
 
-        async function capturarRosto() {
-          if (capturing) return;
-          capturing = true;
-          btn.disabled = true;
+        async function detectarRosto() {
+          if (!stream) return;
 
-          const nome = document.getElementById('name').value.trim();
-          const usuario = document.getElementById('nameUser').value.trim();
-          const email = document.getElementById('email').value.trim();
-          const senha = document.getElementById('password').value.trim();
+          const w = video.videoWidth || 640;
+          const h = video.videoHeight || 480;
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, w, h);
 
-          if (!nome || !usuario || !email || !senha) {
-            alert("Preencha todos os campos antes de capturar o rosto!");
-            capturing = false;
-            btn.disabled = false;
+          const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+          const base64Data = dataURL.split(',')[1];
+
+          try {
+            const formData = new FormData();
+            formData.append('api_key', '6l33ri1N4hSM2g2VHfNag80IFfQJ1MlK');
+            formData.append('api_secret', 'PnPRljUfsnm9ioNEVCVE4K-Z1qTwXYjw');
+            formData.append('image_base64', base64Data);
+            formData.append('return_attributes', 'none');
+
+            const response = await fetch('https://api-us.faceplusplus.com/facepp/v3/detect', {
+              method: 'POST',
+              body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.faces && result.faces.length > 0) {
+              // Rosto detectado
+              rostoDetectado = true;
+              statusRosto.textContent = `✅ Rosto detectado! ${result.faces.length} face(s) encontrada(s).`;
+              statusRosto.className = 'alert alert-success text-center';
+              statusRosto.style.display = 'block';
+              btnCapturarRosto.disabled = false;
+            } else {
+              // Nenhum rosto detectado
+              rostoDetectado = false;
+              statusRosto.textContent = '❌ Nenhum rosto detectado. Posicione-se melhor na câmera.';
+              statusRosto.className = 'alert alert-warning text-center';
+              statusRosto.style.display = 'block';
+              btnCapturarRosto.disabled = true;
+            }
+          } catch (error) {
+            console.error('Erro na detecção de rosto:', error);
+            statusRosto.textContent = '⚠️ Erro na detecção. Verifique a conexão.';
+            statusRosto.className = 'alert alert-danger text-center';
+            statusRosto.style.display = 'block';
+            rostoDetectado = false;
+            btnCapturarRosto.disabled = true;
+          }
+        }
+
+        async function iniciarCamera() {
+          // Validar formulário antes de iniciar a câmera
+          if (!validarFormulario()) {
+            alert("Corrija os erros no formulário antes de iniciar a câmera!");
             return;
           }
 
           try {
             if (!stream) {
-              stream = await navigator.mediaDevices.getUserMedia({ video: true });
+              stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                  width: { ideal: 640 },
+                  height: { ideal: 480 },
+                  facingMode: 'user' 
+                } 
+              });
               video.srcObject = stream;
               video.style.display = 'block';
-              try { await video.play(); } catch(e){}
+              await video.play();
             }
 
-            await new Promise(res => setTimeout(res, 500));
+            btnIniciarCamera.style.display = 'none';
+            btnCapturarRosto.style.display = 'block';
+            btnCapturarRosto.disabled = true;
+
+            // Iniciar detecção contínua a cada 2 segundos
+            intervaloDetecao = setInterval(detectarRosto, 2000);
+            
+            // Primeira detecção após 1 segundo
+            setTimeout(detectarRosto, 1000);
+
+          } catch (err) {
+            console.error('Erro ao acessar a câmera:', err);
+            alert('Erro ao acessar a câmera: ' + (err.message || err));
+          }
+        }
+
+        async function capturarRosto() {
+          if (!rostoDetectado) {
+            alert("Nenhum rosto detectado! Posicione-se melhor na câmera antes de capturar.");
+            return;
+          }
+
+          btnCapturarRosto.disabled = true;
+
+          try {
+            const nome = document.getElementById('name').value.trim();
+            const usuario = document.getElementById('nameUser').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const senha = document.getElementById('password').value.trim();
+            const curso = document.getElementById("curso").value.trim();
+            const matricula = document.getElementById("matricula").value.trim();
 
             const w = video.videoWidth || 640;
             const h = video.videoHeight || 480;
@@ -103,11 +283,18 @@
             const resp = await fetch('/salvar_rosto', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ nome, usuario, email, senha, imagem: dataURL })
+              body: JSON.stringify({ 
+                nome, 
+                usuario, 
+                email, 
+                senha, 
+                imagem: dataURL, 
+                curso, 
+                matricula 
+              })
             });
 
-            let json;
-            try { json = await resp.json(); } catch(e){ json = { mensagem: 'Resposta inválida do servidor.' }; }
+            const json = await resp.json();
 
             if (json.redirect) {
               await stopStream();
@@ -115,20 +302,25 @@
               return;
             }
 
-            if (json.mensagem) alert(json.mensagem);
-            else alert(JSON.stringify(json));
+            if (json.mensagem) {
+              alert(json.mensagem);
+            } else if (json.erro) {
+              alert("Erro: " + json.erro);
+            }
 
           } catch (err) {
-            console.error('Erro ao capturar/enviar rosto:', err);
-            alert('Erro ao acessar a câmera ou enviar a imagem: ' + (err.message || err));
+            console.error('Erro ao enviar rosto:', err);
+            alert('Erro ao enviar a imagem: ' + (err.message || err));
           } finally {
-            await stopStream();
-            capturing = false;
-            btn.disabled = false;
+            btnCapturarRosto.disabled = false;
           }
         }
 
-        if (btn) btn.addEventListener('click', capturarRosto);
+        if (btnIniciarCamera) btnIniciarCamera.addEventListener('click', iniciarCamera);
+        if (btnCapturarRosto) btnCapturarRosto.addEventListener('click', capturarRosto);
+
+        // Parar a câmera se o usuário sair da página
+        window.addEventListener('beforeunload', stopStream);
       })();
     </script>
 
