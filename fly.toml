@@ -1,20 +1,20 @@
-app = "projetoiot-main"
-
-[env]
-PORT = "8080"
+app = "seu-nome-app-unico"
 
 [build]
-builder = "paketobuildpacks/builder:base"
 
-[services]
-  [[services.http]]
-    internal_port = 8080
-    protocol = "tcp"
+[http_service]
+  internal_port = 8080
+  force_https = true
 
-    [[services.http.ports]]
-      handlers = ["http"]
-      port = 80
+  [[http_service.ports]]
+    handlers = ["http"]
+    port = 80
 
-    [[services.http.ports]]
-      handlers = ["tls", "http"]
-      port = 443
+  [[http_service.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
