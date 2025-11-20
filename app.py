@@ -96,6 +96,9 @@ def salvar_rosto():
         "redirect": url_for('login')
     })
 
+@app.route('/health')
+def health():
+    return 'OK', 200
 # ------------------------------
 # Reconhecimento facial
 # ------------------------------
