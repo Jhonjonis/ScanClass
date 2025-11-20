@@ -2,7 +2,7 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Instalar dependências do sistema necessárias
+# Instalar dependências do sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
@@ -15,5 +15,5 @@ COPY . .
 
 EXPOSE 8080
 
-# COMANDO CORRIGIDO - usar porta 8080 e aumentar timeout
+# Comando do gunicorn
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--timeout", "120", "--workers", "1"]

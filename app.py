@@ -98,6 +98,7 @@ def salvar_rosto():
 
 @app.route('/health')
 def health():
+    """Rota para health check do Fly.io"""
     return 'OK', 200
 # ------------------------------
 # Reconhecimento facial
